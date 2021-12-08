@@ -21,7 +21,7 @@ class Piece:
     def __init__(self, color, Type):
         self.color = color
         self.Type = Type
-        hasMoved = False
+        self.hasMoved = False
 
         if self.Type == "PAWN":
             self.letter = "P"
@@ -38,6 +38,9 @@ class Piece:
 
     def getColor(self):
         return self.color
+
+    def getType(self):
+        return self.Type
 
 class Square:
     isEmpty = True
@@ -65,6 +68,7 @@ class Square:
 
 class Board:
     squares = []
+    capturedPieces = []
     def __init__(self):
         print("Initiating board...")
         # populate board with 64 squares
@@ -222,6 +226,48 @@ def validateMove(src, dest, playerColor):
                 print("Invalid move: dest has an allied piece.\n")
                 return False
 
+    # piece-specific rules
+    # pieceType = src.getContents().getType()
+    # print(pieceType)
+    piece = src.getContents()
+
+    # pawn rules
+    blackModifier = 1
+    if playerColor == "Black":
+        blackModifier = -1
+    if piece.Type == "PAWN":
+        # moving without capture
+        if dest.isEmpty:
+            # move one square forward
+            if dest.id == src.id + (blackModifier * 8):
+                return True
+            # move two squares forward
+            elif dest.id == src.id + (blackModifier * 16) and not piece.hasMoved:
+                return True
+            else:
+                print("Invalid move.")
+                return False
+        elif not dest.isEmpty:
+            if dest.id == src.id + (blackModifier * 7) or dest.id == src.id + (blackModifier * 9):
+                return True
+            # FIXME - add en passant capturing
+
+    # rook rules
+
+    # knight rules
+    abc = [17, 10, 6, 15]
+    if piece.Type == "KNIGHT":
+        if dest.id - src.id in abc:
+            return True
+
+    # bishop rules
+
+    # queen rules
+
+    # king rules
+
+
+
     return True
 
 
@@ -233,9 +279,16 @@ def move(src, dest):
     print(src)
     print(dest)
 
+    # capture
+    if not dest.isEmpty:
+        print("Piece captured!")
+        board.capturedPieces.append(dest.getContents())
+
+
     piece = src.getContents()
     dest.addPiece(piece)
     src.removePiece()
+    piece.hasMoved = True
 
 
 def populateBoard():
