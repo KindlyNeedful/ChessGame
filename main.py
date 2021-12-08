@@ -11,15 +11,15 @@ class Type(Enum):
     QUEEN = 5
     KING = 6
 
-class Color(Enum):
-    WHITE = 1
-    BLACK = 2
+# class Color(Enum):
+#     WHITE = 1
+#     BLACK = 2
 
 class Piece:
     letter = "" # P for pawn, N for Knight, B for Bishop, R for Rook, Q for Queen, K for King
 
-    def __init__(self, Color, Type):
-        self.Color = Color
+    def __init__(self, color, Type):
+        self.color = color
         self.Type = Type
         hasMoved = False
 
@@ -36,12 +36,15 @@ class Piece:
         if self.Type == "KING":
             self.letter = "K"
 
+    def getColor(self):
+        return self.color
+
 class Square:
     isEmpty = True
 
-    def __init__(self, id, Color):
+    def __init__(self, id, color):
         self.id = id  # integers, 0 - 63
-        self.Color = Color  # white, black
+        self.color = color  # white, black
         self.contents = None
 
     def getContents(self):
@@ -67,14 +70,26 @@ class Board:
         # populate board with 64 squares
         for x in range(64):
             if isEven(x):
-                self.squares.append(Square(x, "WHITE"))
+                self.squares.append(Square(x, "White"))
             elif not isEven(x):
-                self.squares.append(Square(x, "BLACK"))
+                self.squares.append(Square(x, "Black"))
 
+    # # takes src and dest squares. Only runs after the move has been validated.
+    # def move(self, src, dest):
+    #     print("Moving piece from " + str(src) + " to " + str(dest))
+    #     src = self.getSquare(src)
+    #     dest = self.getSquare(dest)
+    #     print(src)
+    #     print(dest)
+    #
+    #     dest.addPiece(src.getContents)
+    #     src.removePiece()
 
-    def move(self, sourcePiece, destinationSquare):
-        print("Attempting to move piece " + str(sourcePiece) + " to " + str(destinationSquare))
-        # validate the move
+    def getSquare(self, squareString):
+        for x in self.squares:
+            if str(x.id) == squareString:
+                return x
+
 
 
 def isEven(num):
@@ -96,8 +111,7 @@ def buttonQuit_clickHandler():
 
 ################
 
-board = Board()
-board.move("a1", "a2")
+
 
 
 # print(str(len(board.squares)))
@@ -128,21 +142,101 @@ def printSquare(square):
         contentsString = ""
     else:
         piece = square.getContents()
-        contentsString = str(str(piece.Color)[0:2] + " " + piece.Type)
+        contentsString = str(str(piece.getColor())[0:2] + " " + piece.Type)
     print(str(square.id).rjust(2) + ":", end="")    # FIXME: replace id with coords
     print(str(contentsString).center(squareWidth, "-"), end=" ")
 
     # problem: id 8 is shorter than id 18
 
+def playerOffersDraw(color):
+    print ("Player " + color + " is offering a draw.")
+    if color == "White":
+        print("Black, ", end="")
+    else:
+        print("White, ", end="")
+    print("do you accept? [y | n]")
+    playerInput = input("> ")
+    if playerInput == "y":
+        print("The game has ended in a draw.")
+        startGame()
 
-def getPlayerMove(Color):
-    print(str(Color) + " to move: [src dest]")
-    input("> ")
+
+def getPlayerMove(color):
+    print(str(color) + " to move: [src,dest | d - offer draw | r - resign]")
+    playerInput = input("> ")
+
+    if playerInput == "d":
+        playerOffersDraw(color)
+    elif playerInput == "r":
+        print (color + " has resigned!")
+        # display victory screen
+        startGame()
+    else:
+        try:
+            src = playerInput.split(",")[0]
+            dest = playerInput.split(",")[1]
+
+            print("Trying move: " + str(src) + "," + str(dest))
+            if validateMove(src,dest, color):
+                move(src,dest)
+            else:
+                getPlayerMove(color)
+        except ValueError:
+            print("Invalid input.")
+            getPlayerMove(color)
+
+    # else:     # FIXME - rework input validation
+    #     print("Invalid input.")
+    #     getPlayerMove(color)
 
 
-    # tryMove()
+# src, dest square ids
+# ONLY returns true/false whether a move is valid, does not actually move anything
+def validateMove(src, dest, playerColor):
+    print("tryMove(" + str(src) + ", " + str(dest) + ")...")
+    src = board.getSquare(src)
+    dest = board.getSquare(dest)
+    # ERROR: it's parsing input src,dest as strings.    # implemented board.getSquares() - good.
 
-# def getStringOfLength(string, length):
+
+    # list all the conditions in which this is an invalid move.
+    # unless all conditions are met, return False.
+
+    # if there is no piece in the src square
+    if (src.isEmpty):
+        print ("Invalid move: src is empty.")
+        return False
+    else:
+        # if the src square contains an enemy piece
+        # print(src.getContents().color)
+        # print(playerColor)
+        if not src.getContents().color == playerColor:
+            print("Invalid move: src has an enemy piece.\n")
+            return False
+
+        # if the destination square has an allied piece
+        if not dest.isEmpty:
+            # print(dest.getContents().color)
+            # print(playerColor)
+            if dest.getContents().color == playerColor:
+                print("Invalid move: dest has an allied piece.\n")
+                return False
+
+    return True
+
+
+def move(src, dest):
+    # takes src and dest squares. Only runs after the move has been validated.
+    src = board.getSquare(src)
+    dest = board.getSquare(dest)
+    print("Moving piece from " + str(src) + " to " + str(dest))
+    print(src)
+    print(dest)
+
+    piece = src.getContents()
+    dest.addPiece(piece)
+    src.removePiece()
+
 
 def populateBoard():
     board.squares[0].addPiece(Piece("White", "ROOK"))
@@ -176,20 +270,28 @@ def gameLoop():
     while playerVictory == None and stalemate == False:
         printBoard()
         if whiteToMove:
-            getPlayerMove("WHITE")
+            getPlayerMove("White")
             whiteToMove = False
         else:
-            getPlayerMove("BLACK")
+            getPlayerMove("Black")
             whiteToMove = True
 
 print("test".center(10, "*"))
 print("testing".center(10, "*"))
 
-board = Board()
-# board.squares[0].addPiece(Piece("White", "ROOK"))   # placing a white rook on a1, square 0, for testing purposes
 
-populateBoard()
-gameLoop()
+
+def startGame():
+    # board = Board()
+    # FIXME - may need to clear contents from previous game
+    populateBoard()
+    gameLoop()
+
+
+
+board = Board()
+# move("a1", "a2", "")
+startGame()
 
 
 ####
