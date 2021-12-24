@@ -342,9 +342,6 @@ def startGame():
 
 
 
-board = Board()
-# move("a1", "a2", "")
-startGame()
 
 
 ####
@@ -373,28 +370,66 @@ startGame()
 
 
 
-# # pygame GUI
-# pygame.init()
-#
-# white = (255,255,255)
-# black = (0,0,0)
-#
-# red = (255,0,0)
-# green = (0,255,0)
-# blue = (0,0,255)
-#
+# pygame GUI
+pygame.init()
+
+white = (255,255,255)
+black = (0,0,0)
+
+red = (255,0,0)
+green = (0,255,0)
+blue = (0,0,255)
+# custom colors
+midGray = (128,128,128)
+squareColorLight = (222, 206, 162)
+squareColorDark = (70, 99, 65)
+
+# defines height/width of the squares
+squareSize = 75
+
+# define gameDisplay window size
 # gameDisplay = pygame.display.set_mode((800,600))
-# gameDisplay.fill(black)
-#
-# pygame.draw.rect(gameDisplay, green, (400,400,50,25))   # where to draw, what color, top right X and Y, width, height
-# pygame.draw.rect(gameDisplay, white, (500,500,50,25))
-# pygame.draw.rect(gameDisplay, white, (0,50,100,100))
-#
-#
-# while True:
-#     for event in pygame.event.get():
-#         if event.type == pygame.QUIT:
-#             pygame.quit()
-#             quit()
-#
-#     pygame.display.update()
+gameDisplay = pygame.display.set_mode((8 * squareSize, 8 * squareSize))
+
+gameDisplay.fill(midGray)
+#pygame.draw.rect(gameDisplay, green, (400,400,50,25))   # where to draw, what color, top left X and Y, width, height
+#pygame.draw.rect(gameDisplay, white, (500,500,50,25))
+
+
+# pygame.draw.rect(gameDisplay, squareColorLight, (0,0,squareSize,squareSize))
+
+# for x in range(0,8):
+#     pygame.draw.rect(gameDisplay, squareColorLight, (squareSize * x, squareSize * x, squareSize, squareSize))
+
+
+# draw chessboard
+# for x in range(0,64):
+
+for x in range(0, 8):
+
+    for y in range(0, 8):
+        if isEven(x + y):
+            color = squareColorLight
+        else:
+            color = squareColorDark
+
+        pygame.draw.rect(gameDisplay, color, (squareSize * y, squareSize * x, squareSize, squareSize))
+
+
+
+
+
+while True:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            pygame.quit()
+            quit()
+
+    pygame.display.update()
+
+
+
+# main game loop
+board = Board()
+# move("a1", "a2", "")
+startGame()
