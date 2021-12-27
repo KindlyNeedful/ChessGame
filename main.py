@@ -224,7 +224,12 @@ def getPlayerMove(color):
 # src, dest square ids #FIXME - changing this to pass the squares in directly.
 # ONLY returns true/false whether a move is valid, does not actually move anything
 def validateMove(src, dest, playerColor):
-    print("validateMove(" + str(src.id) + ", " + str(dest.id) + ", " + str(playerColor) + ")...")
+    # if the player is black, modifier = -1. If white, modifier = 1.
+    blackModifier = 1
+    if playerColor == "Black":
+        blackModifier = -1
+
+    # print("validateMove(" + str(src.id) + ", " + str(dest.id) + ", " + str(playerColor) + ")...")
     # src = board.getSquare(src)
     # dest = board.getSquare(dest)
     # ERROR: it's parsing input src,dest as strings.    # implemented board.getSquares() - good.
@@ -258,9 +263,7 @@ def validateMove(src, dest, playerColor):
     piece = src.getContents()
 
     # pawn rules
-    blackModifier = 1
-    if playerColor == "Black":
-        blackModifier = -1
+
     if piece.Type == "PAWN":
         # moving without capture
         if dest.isEmpty:
@@ -279,29 +282,142 @@ def validateMove(src, dest, playerColor):
             # FIXME - add en passant capturing
 
     # rook rules
+    if piece.Type == "ROOK":
+
+        # move must be within the same rank
+        if src.id // 8 == dest.id // 8:
+            if pathIsClear(src, dest):
+                return True
+            else:
+                return False
+        # or within the same file
+        elif src.id % 8 == dest.id % 8:
+            if pathIsClear(src, dest):
+                return True
+            else:
+                return False
+
+
+         # move must not skip over any pieces
+        else:
+            return False
 
     # knight rules
-    abc = [17, 10, 6, 15]
+    validMoveDiffs = [17, 10, 6, 15]
     if piece.Type == "KNIGHT":
-        if dest.id - src.id in abc:
+        if dest.id - src.id in validMoveDiffs:
             return True
 
     # bishop rules
+    if piece.Type == "BISHOP":
+        # if moveIsDiagonal(src, dest):
+        #     print("bishop: move is diagonal.")
+        #     return True
+        # print("src.x/squareSize: " + str(src.x/squareSize) +", src.y/squareSize: " + str(src.y/squareSize))
+        # print("dest.x/squareSize: " + str(dest.x/squareSize) + ", dest.y/squareSize: " + str(dest.y/squareSize))
+        # print("src.x - dest.x: " + str(src.x - dest.x))
+        # print("src.y - dest.y: " + str(src.y - dest.y))
+
+        if abs(src.x - dest.x) == abs(src.y - dest.y):
+            print("move valid.")
+            if pathIsClear(src, dest):
+                return True
+
 
     # queen rules
 
     # king rules
 
+    return False
     return True
 
+def moveIsDiagonal(src, dest):
+    print("Checking whether move is diagonal: " + str(src.id) + ", " + str(dest.id))
+    if (src.id - dest.id) % 9 == 0 or (src.id - dest.id) % 7 == 0:
+        return True
+    else:
+        return False
+
+def pathIsClear(src, dest):
+    # returns True if a proposed move does not skip over any pieces
+    print("pathIsClear(): checking whether move skips any pieces: " + str(src.id) + ", " + str(dest.id) + "\n\t", end="")
+    piecesInPath = 0
+
+    # horizontal moves
+    if src.id // 8 == dest.id // 8:
+        print("Horizontal move detected.")
+        for x in range(src.id + 1, dest.id):
+            # print(str(x), end=", ")
+            square = board.getSquare(str(x))
+
+            if square.isEmpty:
+                print("Square " + str(x) + " is empty.")
+            if not square.isEmpty:
+                print("Square " + str(x) + " is not empty.")
+                piecesInPath += 1
+
+    # vertical moves
+    if src.id % 8 == dest.id % 8:
+        print("Vertical move detected.")
+        # for every number between src and dest whose %8 is the same.
+
+        modifier = 1
+        if src.id > dest.id:
+            modifier = -1
+        for x in range(src.id + 8 * modifier, dest.id, 8 * modifier):
+            print(str(x))
+            square = board.getSquare(str(x))
+
+            if square.isEmpty:
+                print("Square " + str(x) + " is empty.")
+            if not square.isEmpty:
+                print("Square " + str(x) + " is not empty.")
+                piecesInPath += 1
+
+    # diagonal moves
+    if abs(src.x - dest.x) == abs(src.y - dest.y):
+        print("Diagonal move detected.")
+
+
+        # positive sloped lines
+        if dest.x > src.x and dest.y < src.y or dest.x < src.x and dest.y > src.y:
+            print("positive slope detected")
+            slopeIsPositive = True
+
+        # negative sloped lines
+        if dest.x > src.x and dest.y > src.y or dest.x < src.x and dest.y < src.y:
+            print("negative slope detected")
+            slopeIsPositive = False
+
+        if slopeIsPositive:
+            diff = 9
+        elif not slopeIsPositive:
+            diff = 7
+
+        if dest.id > src.id:
+            for x in range(src.id + diff, dest.id, diff):
+                print(str(x))
+                if not board.getSquare(str(x)).isEmpty:
+                    piecesInPath += 1
+        elif dest.id < src.id:
+            for x in range(src.id - diff, dest.id, -diff):
+                print(str(x))
+                if not board.getSquare(str(x)).isEmpty:
+                    piecesInPath += 1
+
+    print("Pieces in path: " + str(piecesInPath))
+    if piecesInPath == 0:
+        return True
+    else:
+        return False
 
 def move(src, dest):
     # takes src and dest squares. Only runs after the move has been validated.
     # src = board.getSquare(src)
     # dest = board.getSquare(dest)
     print("Moving piece from " + str(src.id) + " to " + str(dest.id))
-    print(src)
-    print(dest)
+    # print(src)
+    # print(dest)
 
     # capture
     if not dest.isEmpty:
@@ -353,8 +469,8 @@ def gameLoop():
             whiteToMove = True
 
 
-print("test".center(10, "*"))
-print("testing".center(10, "*"))
+# print("test".center(10, "*"))
+# print("testing".center(10, "*"))
 
 
 def startGame():
@@ -411,33 +527,45 @@ def drawBoard():
             pygame.draw.rect(gameDisplay, color, (squareSize * y, squareSize * x, squareSize, squareSize))
 drawBoard()
 
-# draw square labels
 fontSize = 24
 font = pygame.font.SysFont(None, fontSize)
-img = font.render('a', True, lightTextColor)
-# gameDisplay.blit(img, (squareSize - 24, squareSize - 24))
-# gameDisplay.blit(img, (squareSize * 8, squareSize * 8))
+def drawLabels():
+    # draw square labels
 
-# labelOffsetX = (squareSize - fontSize) / 2
+    #img = font.render('a', True, lightTextColor)
 
-# FIXME - labels don't appear to be centered.
-characterString = "abcdefgh"
-labelOffsetX = squareSize / 2
-for x in range(8):
-    gameDisplay.blit(font.render(characterString[x], True, lightTextColor),
-                     (labelOffsetX + squareSize * x, squareSize * 8))
+    characterString = "abcdefgh"
+    labelOffsetX = squareSize / 2
+    for x in range(8):
+        gameDisplay.blit(font.render(characterString[x], True, lightTextColor),
+                         (labelOffsetX + squareSize * x, squareSize * 8.1))
 
-numberString = "12345678"
-for x in range(8):
-    gameDisplay.blit(font.render(numberString[7 - x], True, lightTextColor),
-                     (squareSize * 8, labelOffsetX + squareSize * x))
+    numberString = "12345678"
+    for x in range(8):
+        gameDisplay.blit(font.render(numberString[7 - x], True, lightTextColor),
+                         (squareSize * 8.1, labelOffsetX + squareSize * x))
 
-# render testing images
-whitePawnImg = pygame.image.load('whitePawn.png')
-whitePawnImg = pygame.transform.scale(whitePawnImg, (squareSize, squareSize))
-# gameDisplay.blit(whitePawnImg, (0, 0))
+    gameDisplay.blit(font.render("White to move", True, lightTextColor),
+                     (squareSize * 9, squareSize / 2))
 
-gameDisplay.blit(whitePawnImg, (4 * squareSize, 6 * squareSize))
+drawLabels()
+
+def updateLabels():
+    if whiteToMove:
+        text = "White to move"
+    elif not whiteToMove:
+        text = "Black to move"
+
+    pygame.draw.rect(gameDisplay, backgroundColor, (squareSize * 9, squareSize / 2, squareSize * 2, squareSize))
+    gameDisplay.blit(font.render(text, True, lightTextColor),
+                     (squareSize * 9, squareSize / 2))
+
+# # render testing images
+# whitePawnImg = pygame.image.load('whitePawn.png')
+# whitePawnImg = pygame.transform.scale(whitePawnImg, (squareSize, squareSize))
+# # gameDisplay.blit(whitePawnImg, (0, 0))
+#
+# gameDisplay.blit(whitePawnImg, (4 * squareSize, 6 * squareSize))
 
 # main game loop
 board = Board()
@@ -450,14 +578,16 @@ populateBoard()
 # print("square 0 contents: " + str(board.getSquare("0").getContents().getType()) + " " + str(
 #     board.getSquare("0").getContents().getColor()))
 
+def giveSquaresCoords():
 # assign x and y coord values to each squares. Square 0, a1, starts in the bottom left.
-for square in board.squares:
-    print("id: " + str(square.id), end="\t")
-    square.x = (square.id % 8) * squareSize
-    square.y = (7 * squareSize) - ((square.id // 8) * squareSize)  # FIXME
+    for square in board.squares:
+        # print("id: " + str(square.id), end="\t")
+        square.x = (square.id % 8) * squareSize
+        square.y = (7 * squareSize) - ((square.id // 8) * squareSize)  # FIXME
 
-    print("x: " + str(square.x), end="\t")
-    print("y: " + str(square.y))
+        # print("x: " + str(square.x), end="\t")
+        # print("y: " + str(square.y))
+giveSquaresCoords()
 
 
 def getPieceImg(pieceColor, pieceType):
@@ -492,16 +622,16 @@ def getPieceImg(pieceColor, pieceType):
 
 
 def renderPieces():
-    print("Rendering pieces...")
+    # print("Rendering pieces...")
     for square in board.squares:
-        print("Rendering square id " + str(square.id), end='\t')
+        # print("Rendering square id " + str(square.id), end='\t')
 
         if square.isEmpty:
             # pieceImg = pygame.transform.scale(pygame.image.load('noPiece.png'), (squareSize, squareSize))
             # gameDisplay.blit(pieceImg, (square.x, square.y))
             #
             # continue
-            print("Square " + str(square.id) + " is empty. Color should be " + str(square.color))
+            # print("Square " + str(square.id) + " is empty. Color should be " + str(square.color))
             # if isEven(square.id):
             #     color = squareColorDark
             # else:
@@ -515,8 +645,8 @@ def renderPieces():
             pygame.draw.rect(gameDisplay, color, (square.x, square.y, squareSize, squareSize))
         else:
             pieceImg = getPieceImg(square.getContents().getColor(), square.getContents().getType())
-            print("pieceImg: " + str(pieceImg))
-            print("coords: " + str(square.x) + ", " + str(square.y))
+            # print("pieceImg: " + str(pieceImg))
+            # print("coords: " + str(square.x) + ", " + str(square.y))
             gameDisplay.blit(pieceImg, (square.x, square.y))
 
 
@@ -560,34 +690,25 @@ while True:
         if event.type == pygame.MOUSEBUTTONDOWN:
             pos = pygame.mouse.get_pos()
             if clickIsOnBoard(pos):
-                print("mouse clicked over square " + str(getSquare(pos[0], pos[1]).id))
-                # print("MOUSEBUTTONDOWN at " + str(pos))
                 src = getSquare(pos[0], pos[1])
-                # print("Src: " + str(src))
 
         if event.type == pygame.MOUSEBUTTONUP:
             pos = pygame.mouse.get_pos()
             if clickIsOnBoard(pos):
-                print("mouse released over square " + str(getSquare(pos[0], pos[1]).id))
-                # print("MOUSEBUTTONUP at " + str(pos))
                 dest = getSquare(pos[0], pos[1])
-                # print("Dest: " + str(dest))
 
-            print("Src: " + str(src.id))
-            print("Dest: " + str(dest.id))
+                if whiteToMove:
+                    if validateMove(src, dest, 'White'):
+                        move(src, dest)
+                        whiteToMove = False
 
-            if whiteToMove:
-                if validateMove(src, dest, 'White'):
-                    print ("move is valid")
-                    move(src, dest)
-                    whiteToMove = False
-                    renderPieces()
-
-            else:
-                if validateMove(src, dest, 'Black'):
-                    print ("move is valid")
-                    move(src, dest)
-                    whiteToMove = True
-                    renderPieces()
+                else:
+                    if validateMove(src, dest, 'Black'):
+                        move(src, dest)
+                        whiteToMove = True
+            drawBoard()
+            renderPieces()
+            pygame.display.flip()
+            updateLabels()
 
     pygame.display.update()
