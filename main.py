@@ -263,7 +263,6 @@ def validateMove(src, dest, playerColor):
     piece = src.getContents()
 
     # pawn rules
-
     if piece.Type == "PAWN":
         # moving without capture
         if dest.isEmpty:
@@ -303,9 +302,8 @@ def validateMove(src, dest, playerColor):
             return False
 
     # knight rules
-    validMoveDiffs = [17, 10, 6, 15]
     if piece.Type == "KNIGHT":
-        if dest.id - src.id in validMoveDiffs:
+        if dest.id - src.id in [17, 10, 6, 15]:
             return True
 
     # bishop rules
@@ -325,8 +323,32 @@ def validateMove(src, dest, playerColor):
 
 
     # queen rules
+    if piece.Type == "QUEEN": # FIXME - finish this
+        # move must be within the same rank
+        if src.id // 8 == dest.id // 8:
+            if pathIsClear(src, dest):
+                return True
+            else:
+                return False
+        # or within the same file
+        elif src.id % 8 == dest.id % 8:
+            if pathIsClear(src, dest):
+                return True
+            else:
+                return False
+        # or diagonal
+        if abs(src.x - dest.x) == abs(src.y - dest.y):
+            print("move valid.")
+            if pathIsClear(src, dest):
+                return True
+    else:
+        return False
 
     # king rules
+    if piece.Type == "KING":
+        if abs(dest.id - src.id) in [1, 7, 8, 9]:
+            print("move valid.")    # FIXME: kings can't move into danger
+            return True
 
     return False
     return True
