@@ -4,18 +4,22 @@ from tkinter import *
 import pygame
 
 
-class Type(Enum):
-    PAWN = 1
-    KNIGHT = 2
-    BISHOP = 3
-    ROOK = 4
-    QUEEN = 5
-    KING = 6
+# class Type(Enum):
+#     PAWN = 1
+#     KNIGHT = 2
+#     BISHOP = 3
+#     ROOK = 4
+#     QUEEN = 5
+#     KING = 6
 
 
 # class Color(Enum):
 #     WHITE = 1
 #     BLACK = 2
+
+# global moveNumber
+# moveNumber = 1
+
 
 class Piece:
     letter = ""  # P for pawn, N for Knight, B for Bishop, R for Rook, Q for Queen, K for King
@@ -25,18 +29,20 @@ class Piece:
         self.Type = Type
         self.hasMoved = False
 
-        if self.Type == "PAWN":
-            self.letter = "P"
-        if self.Type == "KNIGHT":
-            self.letter = "N"
-        if self.Type == "BISHOP":
-            self.letter = "B"
-        if self.Type == "ROOK":
-            self.letter = "R"
-        if self.Type == "QUEEN":
-            self.letter = "Q"
-        if self.Type == "KING":
-            self.letter = "K"
+        # if self.Type == "PAWN":
+        #     self.letter = "P"
+        # if self.Type == "KNIGHT":
+        #     self.letter = "N"
+        # if self.Type == "BISHOP":
+        #     self.letter = "B"
+        # if self.Type == "ROOK":
+        #     self.letter = "R"
+        # if self.Type == "QUEEN":
+        #     self.letter = "Q"
+        # if self.Type == "KING":
+        #     self.letter = "K"
+
+        self.kingside = None
 
     def getColor(self):
         return self.color
@@ -44,15 +50,54 @@ class Piece:
     def getType(self):
         return self.Type
 
+    # used to mark kingside and queenside rooks for determining legal castling
+    def setKingside(self, kingside):
+        if kingside == True:
+            self.kingside = True
+        else:
+            self.kingside = False
+
+class Game:
+    # let's record games in PGN format: https://en.wikipedia.org/wiki/Portable_Game_Notation
+
+    def __init__(self):
+        debug = True
+        if debug:
+            print("instantiating new Game...")
+
+        # SEVEN TAG ROSTER: REQUIRED
+        self.event = ""     # Name of the tournament or match event.
+        self.site = ""      # An example is New York City, NY USA.
+        self.date = ""      # YYYY.MM.DD form. ?? is used for unknown values.
+        self.round = 1      # Playing round ordinal of the game within the event.
+        self.white = ""     # Player of the white pieces, in Lastname, Firstname format.
+        self.black = ""     # Player of the black pieces, same format as White.
+        self.result = ""    # Result of the game. It is recorded as White score, dash, then Black score, or * (other, e.g., the game is ongoing).
+
+        # OPTIONAL TAG PAIRS
+        self.annotator = ""     # The person providing notes to the game.
+        self.plyCount = ""      # String value denoting the total number of half-moves played.
+        self.timeControl = ""   # e.g. 40/7200:3600 (moves per seconds: sudden death seconds)
+        self.time = ""          # HH:MM:SS format, local time
+        self.termination = ""   #
+        self.mode = ""          # OTB or ICS (internet chess server)
+        self.FEN = ""           #  	The initial position of the chessboard, in Forsyth–Edwards Notation.
+
+        # MOVETEXT
+        # ex: 1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 {This opening is called the Ruy Lopez.}
+        # 4. Ba4 Nf6 5. O-O Be7
+        self.moveText = ""
+        self.moveNum = 1
 
 class Square:
     isEmpty = True
     x = 0
     y = 0
 
-    def __init__(self, id, color):
-        self.id = id  # integers, 0 - 63
-        self.color = color  # white, black
+    def __init__(self, id, color, name):
+        self.id = id            # integers, 0 - 63
+        self.color = color      # white, black
+        self.name = name        # a1, b2, etc
         self.contents = None
 
     def getContents(self):
@@ -75,15 +120,11 @@ class Board:
     capturedPieces = []
 
     def __init__(self):
+        debug = True
         print("Initiating board...")
         # populate board with 64 squares
         for x in range(64):
-            # if isEven(x):
-            #     print("Creating square " + str(x) + ", White")
-            #     self.squares.append(Square(x, "White"))
-            # elif not isEven(x):
-            #     print("Creating square " + str(x) + ", Black")
-            #     self.squares.append(Square(x, "Black"))
+            # calculate square color
             if isEven (x // 8):
                 if isEven(x):
                     color = "Black"
@@ -95,8 +136,14 @@ class Board:
                 elif not isEven(x):
                     color = "Black"
 
-            print("Creating square " + str(x) + ", color " + str(color))
-            self.squares.append(Square(x, color))
+            # calculate square name
+            squareLetter = "abcdefgh"[x % 8]
+            squareNumber = 1 + x // 8
+            name = str(squareLetter) + str(squareNumber)
+
+            if debug:
+                print("Creating square " + str(x) + ", color " + str(color) + ", name " + str(name))
+            self.squares.append(Square(x, color, name))
 
 
     # # takes src and dest squares. Only runs after the move has been validated.
@@ -229,7 +276,9 @@ def validateMove(src, dest, playerColor):
     if playerColor == "Black":
         blackModifier = -1
 
-    # print("validateMove(" + str(src.id) + ", " + str(dest.id) + ", " + str(playerColor) + ")...")
+    piece = src.getContents()
+
+    print("validateMove(" + str(src.id) + ", " + str(dest.id) + ", " + str(playerColor) + ", " + str(piece.Type))
     # src = board.getSquare(src)
     # dest = board.getSquare(dest)
     # ERROR: it's parsing input src,dest as strings.    # implemented board.getSquares() - good.
@@ -260,7 +309,7 @@ def validateMove(src, dest, playerColor):
     # piece-specific rules
     # pieceType = src.getContents().getType()
     # print(pieceType)
-    piece = src.getContents()
+
 
     # pawn rules
     if piece.Type == "PAWN":
@@ -302,8 +351,9 @@ def validateMove(src, dest, playerColor):
             return False
 
     # knight rules
+    validKnightDiffs = [17, 10, 6, 15]
     if piece.Type == "KNIGHT":
-        if dest.id - src.id in [17, 10, 6, 15]:
+        if dest.id - src.id in validKnightDiffs or src.id - dest.id in validKnightDiffs:
             return True
 
     # bishop rules
@@ -341,17 +391,71 @@ def validateMove(src, dest, playerColor):
             print("move valid.")
             if pathIsClear(src, dest):
                 return True
-    else:
-        return False
+        else:
+            return False
 
     # king rules
     if piece.Type == "KING":
+        print("King requested move from " + str(src.id) + " to " + str(dest.id))
+        # regular moves
         if abs(dest.id - src.id) in [1, 7, 8, 9]:
             print("move valid.")    # FIXME: kings can't move into danger
             return True
 
+
+        # castling
+        # check if king has moved
+        if piece.hasMoved:
+            print("Invalid move: King has moved")
+            return False
+        else:
+            # king-side castle
+            if dest.id - src.id == 2:
+                print("Kingside castle detected")
+                kingside = True
+
+            # queen-side castle
+            elif src.id - dest.id == 2:
+                print("Queenside castle detected")
+                kingside = False
+
+            # check if rook has moved
+            rook = getRook(piece.color, kingside)
+            print("rook.hasMoved: " + str(rook.hasMoved))
+            if rook.hasMoved:
+                print("Invalid move: Rook has moved")
+                return False
+
+            # check if path is clear    # FIXME: also check the rook's path is clear
+            if not pathIsClear(src, dest):
+                print("Invalid move: Path is not clear")
+                return False
+
+            else:
+                global specialMove
+                specialMove = True
+                global specialMoveType
+
+                if kingside:
+                    specialMoveType = "CASTLEKINGSIDE"
+                if not kingside:
+                    specialMoveType = "CASTLEQUEENSIDE"
+                return True
+
+
+
+
     return False
     return True
+
+def getRook(color, kingside):
+    print ("Getting rook " + str(color) + ", " + str(kingside))
+    for square in board.squares:
+        if square.getContents():
+            piece = square.getContents()
+            if piece.Type == "ROOK" and piece.color.capitalize() == color.capitalize() and piece.kingside == kingside:
+                print("Rook found")
+                return piece
 
 def moveIsDiagonal(src, dest):
     print("Checking whether move is diagonal: " + str(src.id) + ", " + str(dest.id))
@@ -433,11 +537,16 @@ def pathIsClear(src, dest):
     else:
         return False
 
+# global moveNumber
+# moveNumber = 1
+
 def move(src, dest):
     # takes src and dest squares. Only runs after the move has been validated.
     # src = board.getSquare(src)
     # dest = board.getSquare(dest)
-    print("Moving piece from " + str(src.id) + " to " + str(dest.id))
+    # print("Moving piece from " + str(src.id) + " to " + str(dest.id))
+    print("Moving piece from " + str(src.name) + " to " + str(dest.name))
+
     # print(src)
     # print(dest)
 
@@ -450,7 +559,51 @@ def move(src, dest):
     dest.addPiece(piece)
     src.removePiece()
     piece.hasMoved = True
+    # game.moveText.append()
+    updateMoveText(piece, src, dest)
 
+
+def updateMoveText(piece, src, dest):
+    pieceLetter = ""
+    if piece.Type == "PAWN":
+        pieceLetter = ""
+    elif piece.Type == "ROOK":
+        pieceLetter = "R"
+    elif piece.Type == "KNIGHT":
+        pieceLetter = "N"
+    elif piece.Type == "BISHOP":
+        pieceLetter = "B"
+    elif piece.Type == "QUEEN":
+        pieceLetter = "Q"
+    elif piece.Type == "KING":
+        pieceLetter = "K"
+
+    global game
+    # move numbers
+    if whiteToMove:
+        game.moveText += str(game.moveNum) + ". "
+        game.moveNum += 1
+
+    # special moves
+    specialMoveIndicator = ""
+    # if spe
+
+
+    # piece names, special move indicators, squares
+    moveString = (pieceLetter + str(dest.name) + specialMoveIndicator + " ")
+
+
+    # if the move is a castle, overwrite
+    if specialMoveType == "CASTLEKINGSIDE":
+        moveString = ("O-O ")
+    elif specialMoveType == "CASTLEQUEENSIDE":
+        moveString = ("O-O-O ")
+
+
+
+    game.moveText += moveString
+    print("moveText: ")
+    print(game.moveText)
 
 def populateBoard():
     board.squares[0].addPiece(Piece("White", "ROOK"))
@@ -475,7 +628,15 @@ def populateBoard():
     for x in range(8):
         board.squares[x + 48].addPiece(Piece("Black", "PAWN"))
 
+    # mark kingside rooks
+    board.squares[7].getContents().setKingside(True)
+    board.squares[63].getContents().setKingside(True)
 
+    # mark queenside rooks
+    board.squares[0].getContents().setKingside(False)
+    board.squares[56].getContents().setKingside(False)
+
+game = Game()
 def gameLoop():
     # main game loop
     whiteToMove = True
@@ -494,10 +655,12 @@ def gameLoop():
 # print("test".center(10, "*"))
 # print("testing".center(10, "*"))
 
-
 def startGame():
     # board = Board()
     # FIXME - may need to clear contents from previous game
+    # global game
+    # game = Game()
+    # global game
     populateBoard()
     gameLoop()
 
@@ -519,7 +682,7 @@ lightTextColor = (245, 245, 245)
 borderColor = (40, 40, 40)
 
 # defines height/width of the squares
-squareSize = 75
+squareSize = 90 # FIXME: changed from 75
 
 # define gameDisplay window size
 # gameDisplay = pygame.display.set_mode((800,600))
@@ -698,11 +861,38 @@ def clickIsOnBoard(coords):
     else:
         return False
 
+def printSquareInfo(pos):
+    square = getSquare(pos[0], pos[1])
+    piece = square.getContents()
+    print("printing square info: " + str(pos))
+    print("color: " + str(piece.color))
+    print("type: " + str(piece.Type))
+    print("hasMoved: " + str(piece.hasMoved))
+
+# Special Move flags. Reset by 'while running' loop.
+global specialMove
+specialMove = False
+# CASTLEKINGSIDE: kingside castle
+# CASTLEQUEENSIDE: queenside castle
+
+global specialMoveType
+specialMoveType = ""
 
 whiteToMove = True
-while True:
+running = True
+
+
+def getSquareById(id):
+    for square in board.squares:
+        if square.id == id:
+            return square
+    pass
+
+
+while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
+            running = False
             pygame.quit()
             quit()
 
@@ -712,6 +902,7 @@ while True:
         if event.type == pygame.MOUSEBUTTONDOWN:
             pos = pygame.mouse.get_pos()
             if clickIsOnBoard(pos):
+                printSquareInfo(pos)
                 src = getSquare(pos[0], pos[1])
 
         if event.type == pygame.MOUSEBUTTONUP:
@@ -719,15 +910,56 @@ while True:
             if clickIsOnBoard(pos):
                 dest = getSquare(pos[0], pos[1])
 
+                # if whiteToMove:
+                #     if validateMove(src, dest, 'White'):
+                #         # check for special moves
+                #         if specialMove:
+                #             print("specialMoveType: " + specialMoveType)
+                #             if specialMoveType == "CASTLETrue":
+                #                 # move the kingside bishop
+                #
+                #
+                #         move(src, dest)
+                #         whiteToMove = False
+                #
+                # else:
+                #     if validateMove(src, dest, 'Black'):
+                #         move(src, dest)
+                #         whiteToMove = True
                 if whiteToMove:
-                    if validateMove(src, dest, 'White'):
-                        move(src, dest)
-                        whiteToMove = False
-
+                    color = 'White'
                 else:
-                    if validateMove(src, dest, 'Black'):
-                        move(src, dest)
-                        whiteToMove = True
+                    color = 'Black'
+
+                if validateMove(src, dest, color):
+                    # check for special moves
+                    if specialMove:
+                        print("specialMoveType: " + specialMoveType)
+                        if specialMoveType == "CASTLEKINGSIDE":
+                            print("Performing kingside castle...")
+                            # move rook
+                            move(getSquareById(src.id + 3), getSquareById(src.id + 1))
+
+                            # getRook(color, True).move
+                        elif specialMoveType == "CASTLEQUEENSIDE":
+                            print("Performing queenside castle...")
+                            # move rook
+                            move(getSquareById(src.id - 4), getSquareById(src.id - 1))
+                        elif specialMoveType == "PROMOTION":
+                            print("Performing promotion...")
+                        elif specialMoveType == "CHECK":
+                            print("Check!")
+                        elif specialMoveType == "CHECKMATE":
+                            print("Checkmate!")
+
+                    move(src, dest)
+                    whiteToMove = not whiteToMove
+
+
+                # reset specialMove flags
+                specialMove = False
+                specialMoveType = ""
+
             drawBoard()
             renderPieces()
             pygame.display.flip()
